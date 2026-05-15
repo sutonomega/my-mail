@@ -18,6 +18,7 @@ export default function Home() {
       subject: "期間限定セール開催中",
       type: "ad",
       unread: false,
+      time: "21:03",
     },
     {
       id: 3,
@@ -25,6 +26,7 @@ export default function Home() {
       subject: "今度ご飯行こう",
       type: "normal",
       unread: true,
+      time: "20:41",
     },
   ])
   const [hideAds, setHideAds] = useState(true)
@@ -50,9 +52,9 @@ export default function Home() {
         </button>
 
         <div className="space-y-4">
-          {filteredMails.map((mail, index) => (
+          {filteredMails.map((mail) => (
             <div
-              key={index}
+              key={mail.id}
               onClick={() => {
                 const updatedMails = mails.map((m) =>
                   m.id === mail.id
