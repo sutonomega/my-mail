@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 // =========================
 // Type Definitions
@@ -27,7 +27,7 @@ export default function Home() {
   // アプリ内で扱うメールデータ
   // =========================
 
-  const [mails, setMails] = useState<Mail[]>([
+  const initialMails: Mail[] = [
     {
       id: 1,
       sender: "Amazon",
@@ -58,7 +58,36 @@ export default function Home() {
       body: "今週か来週あたりでご飯行かない？落ち着いたお店を見つけたから、都合のいい日があれば教えて。",
       saved: false,
     },
-  ])
+  ]
+
+  const [mails, setMails] = useState<Mail[]>(initialMails)
+  const [isLoaded, setIsLoaded] = useState(false)
+  // =========================
+  // LocalStorage Load
+  // 保存済みメールを読み込む
+  // =========================
+  useEffect(() => {
+    const savedMails = localStorage.getItem("quiet-mail")
+
+    if (savedMails) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMails(JSON.parse(savedMails))
+    }
+
+    setIsLoaded(true)
+  }, [])
+
+  // =========================
+  // LocalStorage Save
+  // メール状態を保存
+  // =========================
+
+  useEffect(() => {
+    localStorage.setItem(
+      "quiet-mail",
+      JSON.stringify(mails)
+    )
+  }, [mails])
 
   // =========================
   // UI State
@@ -177,7 +206,9 @@ export default function Home() {
 // Render
 // UI描画
 // =========================
-
+if (!isLoaded) {
+  return null
+}
 return (
   <>
     {/* =========================
@@ -418,6 +449,7 @@ return (
                 {/* =========================
                     Mail Actions
                     Save ボタン
+                    Unread ボタン
                 ========================= */}
                 <div className="mt-6 flex gap-3">
 
@@ -438,6 +470,22 @@ return (
                   >
                     {selectedMail.saved ? "Saved" : "Save"}
                   </button>
+
+                  <button
+                    onClick={() => {
+                      const updatedMails = mails.map((m) =>
+                        m.id === selectedMail.id
+                          ? { ...m, unread: !m.unread }
+                          : m
+                      )
+                    
+                      setMails(updatedMails)
+                    }}
+                    className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
+                  >
+                    {selectedMail.unread ? "Read" : "Unread"}
+                  </button>
+
                 </div>
 
                 {/* =========================
