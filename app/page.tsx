@@ -47,6 +47,7 @@ export default function Home() {
   const [hideAds, setHideAds] = useState(true)
   const [selectedFolder, setSelectedFolder] = useState<Folder>("inbox")
   const [selectedMailId, setSelectedMailId] = useState(1)
+  const [searchText, setSearchText] = useState("")
 
   const folders = [
     { id: "inbox" as const, label: "Inbox", count: mails.length },
@@ -75,10 +76,21 @@ export default function Home() {
     return true
   })
 
-  const filteredMails =
+  const visibleMails =
     hideAds && selectedFolder === "inbox"
       ? folderMails.filter((mail) => mail.type !== "ad")
       : folderMails
+
+  const searchQuery = searchText.trim().toLowerCase()
+
+  const filteredMails = searchQuery
+    ? visibleMails.filter((mail) =>
+        [mail.sender, mail.subject, mail.body]
+          .join(" ")
+          .toLowerCase()
+          .includes(searchQuery)
+      )
+    : visibleMails
 
   const selectedMail =
     filteredMails.find((mail) => mail.id === selectedMailId) ??
@@ -132,21 +144,30 @@ export default function Home() {
         </aside>
 
         <section className="min-w-0 flex-1">
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
+          <div className="mb-6 flex flex-col gap-4">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm text-zinc-500">
+                  {filteredMails.length} mails
+                </p>
+                <h2 className="mt-1 text-2xl font-light text-zinc-100">
+                  {folders.find((folder) => folder.id === selectedFolder)?.label}
+                </h2>
+              </div>
+
               <p className="text-sm text-zinc-500">
-                {filteredMails.length} mails
+                {hideAds && selectedFolder === "inbox"
+                  ? "Ads hidden"
+                  : "All visible"}
               </p>
-              <h2 className="mt-1 text-2xl font-light text-zinc-100">
-                {folders.find((folder) => folder.id === selectedFolder)?.label}
-              </h2>
             </div>
 
-            <p className="text-sm text-zinc-500">
-              {hideAds && selectedFolder === "inbox"
-                ? "Ads hidden"
-                : "All visible"}
-            </p>
+            <input
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Search sender, subject, or body"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-400/70"
+            />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.9fr)_minmax(360px,1.1fr)]">
@@ -186,6 +207,12 @@ export default function Home() {
                   </p>
                 </button>
               ))}
+
+              {filteredMails.length === 0 && (
+                <div className="rounded-xl border border-zinc-800 p-6 text-sm text-zinc-500">
+                  条件に合うメールはありません
+                </div>
+              )}
             </div>
 
             <aside className="min-h-80 rounded-xl border border-zinc-800 bg-zinc-950 p-5">
