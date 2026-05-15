@@ -1,65 +1,94 @@
-import Image from "next/image";
+"use client"
+
+import { useState } from "react"
 
 export default function Home() {
+  const [mails, setMails] = useState([
+    {
+      id: 1,
+      sender: "Amazon",
+      subject: "ご注文の商品を発送しました",
+      type: "normal",
+      unread: true,
+      time: "22:14",
+    },
+    {
+      id: 2,
+      sender: "SALE INFO",
+      subject: "期間限定セール開催中",
+      type: "ad",
+      unread: false,
+    },
+    {
+      id: 3,
+      sender: "友達",
+      subject: "今度ご飯行こう",
+      type: "normal",
+      unread: true,
+    },
+  ])
+  const [hideAds, setHideAds] = useState(true)
+
+  const filteredMails = hideAds
+    ? mails.filter((mail) => mail.type !== "ad")
+    : mails
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl mb-6 font-light">
+          Quiet Mail
+        </h1>
+
+        <button
+          onClick={() => setHideAds(!hideAds)}
+          className="mb-6 px-4 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-900"
+        >
+          {hideAds
+            ? "広告メールを表示"
+            : "広告メールを隠す"}
+        </button>
+
+        <div className="space-y-4">
+          {filteredMails.map((mail, index) => (
+            <div
+              key={index}
+              onClick={() => {
+                const updatedMails = mails.map((m) =>
+                  m.id === mail.id
+                    ? { ...m, unread: false }
+                    : m
+                )
+
+                setMails(updatedMails)
+              }}
+              className={`border border-zinc-800 rounded-xl p-4 ${mail.unread ? "" : "opacity-50"}`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-zinc-400">
+                  {mail.sender}
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-zinc-500">
+                    {mail.time}
+                  </p>
+
+                  {mail.unread && (
+                    <div className="w-2 h-2 rounded-full bg-blue-400" />
+                  )}
+                </div>
+              </div>
+
+              <p
+                className={`mt-1 text-lg ${mail.unread ? "font-bold text-white" : "text-zinc-600"}`}
+              >
+                {mail.subject}
+              </p>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      </div>
+    </main>
+  )
 }
