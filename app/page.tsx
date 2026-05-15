@@ -17,7 +17,8 @@ type Mail = {
   body: string
   saved: boolean
   trashed: boolean
-  expiresIn: number
+  expiresAt: string | null
+  deletedAt: string | null
 }
 
 type Folder = "inbox" | "quiet" | "unread" | "ads" | "saved" | "trash"
@@ -28,6 +29,14 @@ export default function Home() {
   // Mail Data
   // アプリ内で扱うメールデータ
   // =========================
+
+  const createExpireDate = (days: number) => {
+    const date = new Date()
+    
+    date.setDate(date.getDate() + days)
+    
+    return date.toISOString()
+  }
 
   const initialMails: Mail[] = [
     {
@@ -40,7 +49,8 @@ export default function Home() {
       body: "ご注文の商品を発送しました。配送状況は注文履歴から確認できます。到着予定日は明日の午後です。",
       saved: false,
       trashed: false,
-      expiresIn: 7,
+      expiresAt: createExpireDate(7),
+      deletedAt: null,
     },
     {
       id: 2,
@@ -52,7 +62,8 @@ export default function Home() {
       body: "今だけの限定セールを開催中です。気になる商品がある場合は、キャンペーン終了前にチェックしてください。",
       saved: false,
       trashed: false,
-      expiresIn: 6,
+      expiresAt: createExpireDate(6),
+      deletedAt: null,
     },
     {
       id: 3,
@@ -64,7 +75,8 @@ export default function Home() {
       body: "今週か来週あたりでご飯行かない？落ち着いたお店を見つけたから、都合のいい日があれば教えて。",
       saved: false,
       trashed: false,
-      expiresIn: 5,
+      expiresAt: createExpireDate(5),
+      deletedAt: null,
     },
   ]
 
@@ -98,6 +110,52 @@ export default function Home() {
   }, [mails])
 
   // =========================
+  // Auto Trash
+  // メールを自動Trash
+  // =========================
+  useEffect(() => {
+    const now = new Date()
+
+    const updatedMails = mails.map((mail) => {
+      if (
+        !mail.saved &&
+        !mail.trashed &&
+        mail.expiresAt &&
+        new Date(mail.expiresAt) < now
+      ) {
+        return {
+          ...mail,
+          trashed: true,
+          deletedAt: new Date().toISOString(),
+        }
+      }
+
+      return mail
+    })
+    const filtered = updatedMails.filter((mail) => {
+      if (!mail.deletedAt) return true
+
+      const deletedDate = new Date(mail.deletedAt)
+
+      const diff =
+        now.getTime() - deletedDate.getTime()
+
+      const days = diff / (1000 * 60 * 60 * 24)
+
+      return days < 30
+    })
+
+    const hasChanges =
+      JSON.stringify(filtered) !== JSON.stringify(mails)
+
+    if (hasChanges) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMails(filtered)
+    }
+
+  }, [mails])
+
+  // =========================
   // UI State
   // 現在の画面状態を管理
   // =========================
@@ -120,21 +178,21 @@ export default function Home() {
   // =========================
 
   const folders = [
-    { id: "inbox" as const, label: "Inbox", count: mails.length },
+    { id: "inbox" as const, label: "Inbox", count: mails.filter((mail) => !mail.trashed).length },
     {
       id: "quiet" as const,
       label: "Quiet",
-      count: mails.filter((mail) => mail.type === "normal").length,
+      count: mails.filter((mail) => mail.type === "normal" && !mail.trashed).length,
     },
     {
       id: "unread" as const,
       label: "Unread",
-      count: mails.filter((mail) => mail.unread).length,
+      count: mails.filter((mail) => mail.unread && !mail.trashed).length,
     },
     {
       id: "ads" as const,
       label: "Ads",
-      count: mails.filter((mail) => mail.type === "ad").length,
+      count: mails.filter((mail) => mail.type === "ad" && !mail.trashed).length,
     },
     {
       id: "saved" as const,
@@ -153,11 +211,26 @@ export default function Home() {
   // =========================
 
   const folderMails = mails.filter((mail) => {
-    if (selectedFolder === "quiet") return mail.type === "normal"
-    if (selectedFolder === "unread") return mail.unread
-    if (selectedFolder === "ads") return mail.type === "ad"
-    if (selectedFolder === "saved") return mail.saved
-    if (selectedFolder === "trash") return mail.trashed
+    if (selectedFolder === "quiet") {
+      return mail.type === "normal" && !mail.trashed
+    }
+
+    if (selectedFolder === "unread") {
+      return mail.unread && !mail.trashed
+    }
+
+    if (selectedFolder === "ads") {
+      return mail.type === "ad" && !mail.trashed
+    }
+
+    if (selectedFolder === "saved") {
+      return mail.saved && !mail.trashed
+    }
+  
+    if (selectedFolder === "trash") {
+     return mail.trashed
+    }
+
     if (mail.trashed) return false
  
     return true
@@ -217,6 +290,17 @@ export default function Home() {
     setMails(updatedMails)
   }
 
+  const getRemainingDays = (expiresAt: string | null) => {
+    if (!expiresAt) return null
+
+    const now = new Date()
+    const expireDate = new Date(expiresAt)
+
+    const diff =
+      expireDate.getTime() - now.getTime()
+
+    return Math.ceil(diff / (1000 * 60 * 60 * 24))
+  }
 // =========================
 // Render
 // UI描画
@@ -358,8 +442,14 @@ return (
                   className={`w-full cursor-pointer rounded-xl border p-4 text-left transition hover:border-zinc-700 hover:bg-zinc-900/70 ${
                     selectedMail?.id === mail.id
                       ? "border-blue-400/60 bg-zinc-900"
-                      : "border-zinc-800"
-                  } ${mail.unread ? "" : "opacity-50"}`}
+                      : ""
+                  } ${
+                    mail.trashed
+                      ? "border-red-950 bg-red-950/20 text-zinc-500"
+                      : mail.unread
+                        ? "border-zinc-800"
+                        : "border-zinc-800 opacity-50"
+                  }`}
               >
 
                 {/* =========================
@@ -455,7 +545,7 @@ return (
                     {/* 削除されるまでの日数 */}
                     {!selectedMail.saved && !selectedMail.trashed && (
                       <p className="mt-4 text-sm text-zinc-500">
-                        {selectedMail.expiresIn}日後に自動削除
+                        {getRemainingDays(selectedMail.expiresAt)}日後に自動削除
                       </p>
                     )}
                   </div>
@@ -472,26 +562,39 @@ return (
                     Mail Actions
                     Save ボタン
                     Unread ボタン
+                    Trash ボタン
                 ========================= */}
                 <div className="mt-6 flex gap-3">
+                  
+                  {!selectedMail.trashed && (
+                    <button
+                      onClick={() => {
+                        const updatedMails = mails.map((m) => {
+                          if (m.id !== selectedMail.id) {
+                            return m
+                          }
+                        
+                          const nextSaved = !m.saved
+                        
+                          return {
+                            ...m,
+                            saved: nextSaved,
+                            expiresAt: nextSaved
+                              ? null
+                              : createExpireDate(7),
+                          }
+                        })
 
-                  <button
-                    onClick={() => {
-                      const updatedMails = mails.map((m) =>
-                        m.id === selectedMail.id
-                          ? { ...m, saved: !m.saved }
-                          : m
-                      )
-
-                      setMails(updatedMails)
-                    }}
-                    className={`rounded-lg border px-4 py-2 text-sm transition ${selectedMail.saved
-                      ? "border-blue-400/60 bg-blue-400/10 text-blue-300"
-                      : "border-zinc-800 text-zinc-300 hover:bg-zinc-900"
-                      } `}
-                  >
-                    {selectedMail.saved ? "Saved" : "Save"}
-                  </button>
+                        setMails(updatedMails)
+                      }}
+                      className={`rounded-lg border px-4 py-2 text-sm transition ${selectedMail.saved
+                        ? "border-blue-400/60 bg-blue-400/10 text-blue-300"
+                        : "border-zinc-800 text-zinc-300 hover:bg-zinc-900"
+                        } `}
+                    >
+                      {selectedMail.saved ? "Saved" : "Save"}
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {
@@ -512,7 +615,13 @@ return (
                     onClick={() => {
                       const updatedMails = mails.map((m) =>
                         m.id === selectedMail.id
-                          ? { ...m, trashed: !m.trashed }
+                          ? {
+                              ...m,
+                              trashed: !m.trashed,
+                              deletedAt: m.trashed
+                                ? null
+                                : new Date().toISOString()
+                            }
                           : m
                       )
                     
@@ -520,8 +629,26 @@ return (
                     }}
                     className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
                   >
-                    {selectedMail.unread ? "Deleted" : "Delete"}
+                    {selectedMail.trashed ? "Restore" : "Trash"}
                   </button>
+
+                  {selectedMail.trashed && (
+                    <button
+                      onClick={() => {
+                        const remainingMails =
+                          mails.filter((m) => m.id !== selectedMail.id)
+                      
+                        setMails(remainingMails)
+                      
+                        if (remainingMails.length > 0) {
+                          setSelectedMailId(remainingMails[0].id)
+                        }
+                      }}
+                      className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 transition hover:bg-red-950/40"
+                    >
+                      Delete Forever
+                    </button>
+                  )}
 
                 </div>
 
