@@ -16,9 +16,11 @@ type Mail = {
   time: string
   body: string
   saved: boolean
+  trashed: boolean
+  expiresIn: number
 }
 
-type Folder = "inbox" | "quiet" | "unread" | "ads" | "saved"
+type Folder = "inbox" | "quiet" | "unread" | "ads" | "saved" | "trash"
 
 export default function Home() {
 
@@ -37,6 +39,8 @@ export default function Home() {
       time: "22:14",
       body: "ご注文の商品を発送しました。配送状況は注文履歴から確認できます。到着予定日は明日の午後です。",
       saved: false,
+      trashed: false,
+      expiresIn: 7,
     },
     {
       id: 2,
@@ -47,6 +51,8 @@ export default function Home() {
       time: "21:03",
       body: "今だけの限定セールを開催中です。気になる商品がある場合は、キャンペーン終了前にチェックしてください。",
       saved: false,
+      trashed: false,
+      expiresIn: 6,
     },
     {
       id: 3,
@@ -57,6 +63,8 @@ export default function Home() {
       time: "20:41",
       body: "今週か来週あたりでご飯行かない？落ち着いたお店を見つけたから、都合のいい日があれば教えて。",
       saved: false,
+      trashed: false,
+      expiresIn: 5,
     },
   ]
 
@@ -133,6 +141,11 @@ export default function Home() {
       label: "Saved",
       count: mails.filter((mail) => mail.saved).length,
     },
+    {
+      id: "trash" as const,
+      label: "Trash",
+      count: mails.filter((mail) => mail.trashed).length,
+    },
   ]
   // =========================
   // Folder Filter
@@ -144,6 +157,8 @@ export default function Home() {
     if (selectedFolder === "unread") return mail.unread
     if (selectedFolder === "ads") return mail.type === "ad"
     if (selectedFolder === "saved") return mail.saved
+    if (selectedFolder === "trash") return mail.trashed
+    if (mail.trashed) return false
  
     return true
   })
@@ -431,13 +446,20 @@ return (
                       </div>
                     )}
                   </div>
-
-                  {/* 時間 */}
-                  <p className="shrink-0 text-sm text-zinc-500">
-                    {selectedMail.time}
-                  </p>
+                  <div className="shrink-0 text-right">
+                    {/* 時間 */}
+                    <p className="shrink-0 text-sm text-zinc-500">
+                      {selectedMail.time}
+                    </p>
+                    
+                    {/* 削除されるまでの日数 */}
+                    {!selectedMail.saved && !selectedMail.trashed && (
+                      <p className="mt-4 text-sm text-zinc-500">
+                        {selectedMail.expiresIn}日後に自動削除
+                      </p>
+                    )}
+                  </div>
                 </div>
-
                 {/* =========================
                     Mail Body
                     本文表示
@@ -484,6 +506,21 @@ return (
                     className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
                   >
                     {selectedMail.unread ? "Read" : "Unread"}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const updatedMails = mails.map((m) =>
+                        m.id === selectedMail.id
+                          ? { ...m, trashed: !m.trashed }
+                          : m
+                      )
+                    
+                      setMails(updatedMails)
+                    }}
+                    className="rounded-lg border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-900"
+                  >
+                    {selectedMail.unread ? "Deleted" : "Delete"}
                   </button>
 
                 </div>
